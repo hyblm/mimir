@@ -1,33 +1,30 @@
+use core::fmt;
+
 const WORD_LEN: usize = 5;
 const NUM_WORDS: usize = 2;
 const ANSWERS_LEN: usize = NUM_WORDS * WORD_LEN;
-// const ANSWERS: &str = include_str!("../answers.txt");
-// const DICTIONARY: &str = include_str!("../dictionary.txt");
 
+static DICTIONARY: quickphf::PhfSet<&str> = include!(concat!(env!("OUT_DIR"), "/dict.rs"));
+static ANSWERS: quickphf::PhfSet<&str> = include!(concat!(env!("OUT_DIR"), "/answers.rs"));
+
+// NOTE (matyas): hello
 pub struct Game {
-    answers: [char; ANSWERS_LEN],
+    answers: [u8; ANSWERS_LEN],
 }
 
-type Word = [char; WORD_LEN];
+type Word = [u8; WORD_LEN];
 impl Game {
-    pub fn new(words: &[&str]) -> Self {
-        let mut answers = [' '; ANSWERS_LEN];
-        for (i, letter) in words.concat().chars().enumerate() {
+    pub fn new(answer_words: &[&str]) -> Self {
+        let mut answers = [0; ANSWERS_LEN];
+        for (i, letter) in answer_words.concat().bytes().enumerate() {
             answers[i] = letter;
         }
 
         Self { answers }
     }
 
-    pub fn print_answers(&self) {
-        print!("\n Answers: ");
-        for word in self.answers.chunks(WORD_LEN) {
-            for letter in word {
-                print!("{}", letter);
-            }
-            print!(" ")
-        }
-        print!("\n")
+    pub fn check(&self, guess: &'static Word) -> bool {
+        DICTIONARY.contains(&std::str::from_utf8(guess).unwrap())
     }
 
     pub fn rate_guess(&self, guess: &Word) -> Rating {
@@ -38,7 +35,7 @@ impl Game {
         let mut used_letters = [false; ANSWERS_LEN];
 
         // Check if Green
-        for (i, (letter, color)) in guess.into_iter().zip(&mut mask).enumerate() {
+        for (i, (letter, color)) in guess.iter().zip(&mut mask).enumerate() {
             for (answer, used) in self
                 .answers
                 .chunks(WORD_LEN)
@@ -54,7 +51,7 @@ impl Game {
         }
 
         // Check if yellow
-        let turn_yellow = |letter: &char, answer: &[char], taken: &mut [bool]| -> bool {
+        let turn_yellow = |letter: &u8, answer: &[u8], taken: &mut [bool]| -> bool {
             let answer = answer
                 .iter()
                 .zip(taken.as_ref())
@@ -79,6 +76,20 @@ impl Game {
         }
 
         Rating { mask }
+    }
+}
+
+impl fmt::Display for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut out = String::with_capacity(self.answers.len() * WORD_LEN);
+        out.push_str("\n Answers: ");
+        for word in self.answers.chunks(WORD_LEN) {
+            for &letter in word {
+                out.push_str(&format!("{}", letter as char));
+            }
+            out.push(' ');
+        }
+        write!(f, "{}", out)
     }
 }
 
@@ -114,7 +125,7 @@ mod tests {
         use crate::{Color::*, Game};
         let expected = [Yellow, Green, Gray, Gray, Gray];
         let game = Game::new(&["small", "group"]);
-        let rating = game.rate_guess(&['o', 'r', 'd', 'e', 'r']);
+        let rating = game.rate_guess(b"order");
         for (e, r) in expected.into_iter().zip(rating.mask) {
             assert_eq!(e, r);
         }

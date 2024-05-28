@@ -5,3 +5,48 @@ version = 3
 [[package]]
 name = "mimir"
 version = "0.1.0"
+dependencies = [
+ "quickphf",
+ "quickphf_codegen",
+]
+
+[[package]]
+name = "quickdiv"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "affb828694e2f006fdcd24d9096eab97dea9f100ee36b19886c9ea4531d49483"
+
+[[package]]
+name = "quickphf"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e884dd01fd3f76f1f42d3ab4d7fceda214345ddb14be926cb5f5a487f2cabe64"
+dependencies = [
+ "quickdiv",
+ "wyhash",
+]
+
+[[package]]
+name = "quickphf_codegen"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "404e5bcbcfaf95a0f584f27b1bc5d8b0774ecbbecb0b4515d235367f49da87c9"
+dependencies = [
+ "quickdiv",
+ "quickphf",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+
+[[package]]
+name = "wyhash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "baf6e163c25e3fac820b4b453185ea2dea3b6a3e0a721d4d23d75bd33734c295"
+dependencies = [
+ "rand_core",
+]
