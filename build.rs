@@ -4,15 +4,19 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 fn main() {
-    let dict_path = Path::new(&env::var("OUT_DIR").unwrap()).join("dict.rs");
-    let mut dict_wirter = BufWriter::new(File::create(&dict_path).unwrap());
-    let dict: Vec<_> = include_str!("dictionary.txt").lines().collect();
-    let dict = quickphf_codegen::build_set(&dict);
-    write!(&mut dict_wirter, "{}", dict).unwrap();
+    let output_directory = &env::var("OUT_DIR").unwrap();
 
-    let answers_path = Path::new(&env::var("OUT_DIR").unwrap()).join("answers.rs");
-    let mut answers_writer = BufWriter::new(File::create(&answers_path).unwrap());
-    let answers: Vec<_> = include_str!("answers.txt").lines().collect();
-    let answers = quickphf_codegen::build_set(&answers);
-    write!(&mut answers_writer, "{}", answers).unwrap();
+    let (keys, values): (Vec<_>, Vec<_>) = include_str!("dictionary_counts.txt")
+        .lines()
+        .map(|line| {
+            let (word, count) = line.split_once(' ').expect("line is in form `word count`");
+            let count: usize = count.parse().expect("count is a whole number");
+            (word, count)
+        })
+        .unzip();
+    let dictionary = quickphf_codegen::build_map(&keys, &values);
+
+    let dictionary_path = Path::new(output_directory).join("dict.rs");
+    let mut writer = BufWriter::new(File::create(&dictionary_path).unwrap());
+    write!(&mut writer, "{}", dictionary).unwrap();
 }
