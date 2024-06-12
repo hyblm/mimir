@@ -23,7 +23,7 @@ pub fn play_all_games(display: bool) {
 }
 
 pub fn play_all_games_with_initial_guess(display: bool) {
-    for (&answers, initial_guess) in ANSWER_PAIRS.iter().zip(INITIAL_GUESSES) {
+    for (&answers, &initial_guess) in ANSWER_PAIRS.iter().zip(INITIAL_GUESSES) {
         let mut game = GameInstance::new(answers);
         let mut guesser = Solver::new();
         if display {

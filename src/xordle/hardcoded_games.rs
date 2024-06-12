@@ -1007,7 +1007,7 @@ pub const ANSWER_PAIRS: [[&str; 2]; 1000] = [
     ["stack", "owner"],
 ];
 
-pub const INITIAL_GUESSES: [Word; 1000] = [
+pub const INITIAL_GUESSES: [&Word; 1000] = [
     b"build", b"fuzzy", b"prize", b"flint", b"heath", b"frank", b"group", b"rhyme", b"frock",
     b"print", b"lousy", b"beard", b"surge", b"whole", b"quote", b"notch", b"along", b"dwell",
     b"merit", b"plank", b"nurse", b"chess", b"shark", b"facet", b"leave", b"panic", b"forty",
