@@ -51,14 +51,7 @@ impl GameInstance {
             if display {
                 println!("{} {}", std::str::from_utf8(&guess).unwrap(), score);
             }
-            match score {
-                Target::Hit => {
-                    if display {
-                        println!("That's an answer!")
-                    }
-                }
-                Target::Miss(feedback) => {}
-            }
+            guesser.register_feedback(guess, score.feedback());
         }
     }
 

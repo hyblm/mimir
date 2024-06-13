@@ -26,11 +26,11 @@ pub fn play_all_games_with_initial_guess(display: bool) {
     for (&answers, &initial_guess) in ANSWER_PAIRS.iter().zip(INITIAL_GUESSES) {
         let mut game = GameInstance::new(answers);
         let mut guesser = Solver::new();
+        let score = game.rate_guess(initial_guess);
         if display {
-            let score = game.rate_guess(initial_guess);
             println!("{} {}", std::str::from_utf8(&initial_guess).unwrap(), score);
-            guesser.register_feedback(initial_guess, score);
         }
+        guesser.register_feedback(initial_guess, score.feedback());
         game.play(&mut guesser, display);
     }
 }

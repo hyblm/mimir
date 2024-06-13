@@ -1,9 +1,11 @@
+use std::slice::ChunksExact;
+
 use crate::WORD_LEN;
 
 /// We have 12 947 words with frequency data from the google 5-gram data set
 const DICTIONARY_SIZE: usize = 12_947;
 pub struct Dictionary {
-    words: [u8; WORD_LEN * DICTIONARY_SIZE],
+    pub words: [u8; WORD_LEN * DICTIONARY_SIZE],
     freqs: [usize; DICTIONARY_SIZE],
     delim: usize,
 }

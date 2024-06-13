@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::{xordle::Word, Feedback, Target, WORD_LEN};
+use crate::{xordle::Word, Feedback, Letter, Target, WORD_LEN};
 
 mod dictionary;
 use dictionary::Dictionary;
@@ -38,8 +38,7 @@ impl Solver {
         }
     }
 
-    pub(crate) fn register_feedback(&mut self, guess: Word, feedback: Target) {
-
-        // self.remaining.trim()
+    pub fn register_feedback(&mut self, guess: Word, feedback: Feedback) {
+        todo!()
     }
 }
