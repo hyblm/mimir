@@ -17,6 +17,6 @@ fn main() {
     let dictionary = quickphf_codegen::build_map(&keys, &values);
 
     let dictionary_path = Path::new(output_directory).join("dict.rs");
-    let mut writer = BufWriter::new(File::create(&dictionary_path).unwrap());
+    let mut writer = BufWriter::new(File::create(dictionary_path).unwrap());
     write!(&mut writer, "{}", dictionary).unwrap();
 }

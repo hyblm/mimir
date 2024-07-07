@@ -1,6 +1,6 @@
 use std::io;
 
-use crate::{xordle::Word, Feedback, Letter, Target, WORD_LEN};
+use crate::{xordle::Word, Feedback, WORD_LEN};
 
 mod dictionary;
 use dictionary::Dictionary;
@@ -17,7 +17,18 @@ impl Solver {
     }
 
     pub fn make_guess(&mut self) -> Word {
+        let total_count: u64 = self.remaining.counts.iter().sum();
+
+        for &count in &self.remaining.counts {
+            let probability = count as f64 / total_count as f64;
+        }
+
+        todo!();
+    }
+
+    pub fn type_guess() -> Word {
         let mut input_buffer = String::new();
+
         let stdin = io::stdin(); // We get `Stdin` here.
         loop {
             if let Ok(n) = stdin.read_line(&mut input_buffer) {
@@ -38,7 +49,14 @@ impl Solver {
         }
     }
 
+    // NOTE: both grey and yellow give us information about both target words
+    // - grey tells us that the letter isn't present at all in either answer
+    // - yellow tells us that the letter isn't in the guessed position in either answer
+    //
+    // We can trim
+    // - all words that contain Absent letters
+    // - all words that contain Misput letters in the location where they was guessed
     pub fn register_feedback(&mut self, guess: Word, feedback: Feedback) {
-        todo!()
+        self.remaining.trim(guess, feedback);
     }
 }

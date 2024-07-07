@@ -1,10 +1,10 @@
 use super::Word;
 
 pub fn get(index: usize) -> [&'static str; 2] {
-    ANSWER_PAIRS[index].clone()
+    TARGET_PAIRS[index].clone()
 }
 
-pub const ANSWER_PAIRS: [[&str; 2]; 1000] = [
+pub const TARGET_PAIRS: [[&str; 2]; 1000] = [
     ["ditto", "apple"],
     ["panic", "meter"],
     ["roach", "queen"],

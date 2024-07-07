@@ -6,7 +6,7 @@ mod tests;
 
 use solver::Solver;
 use xordle::{
-    hardcoded_games::{ANSWER_PAIRS, INITIAL_GUESSES},
+    hardcoded_games::{INITIAL_GUESSES, TARGET_PAIRS},
     GameInstance,
 };
 
@@ -15,15 +15,15 @@ const WORD_COUNT: usize = 2;
 const ANSWERS_LEN: usize = WORD_COUNT * WORD_LEN;
 
 pub fn play_all_games(display: bool) {
-    for answers in ANSWER_PAIRS {
-        let mut game = GameInstance::new(answers);
+    for target_strs in TARGET_PAIRS {
+        let mut game = GameInstance::new(target_strs);
         let mut guesser = Solver::new();
         game.play(&mut guesser, display);
     }
 }
 
 pub fn play_all_games_with_initial_guess(display: bool) {
-    for (&answers, &initial_guess) in ANSWER_PAIRS.iter().zip(INITIAL_GUESSES) {
+    for (&answers, &initial_guess) in TARGET_PAIRS.iter().zip(INITIAL_GUESSES) {
         let mut game = GameInstance::new(answers);
         let mut guesser = Solver::new();
         let score = game.rate_guess(initial_guess);
