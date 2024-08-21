@@ -47,7 +47,7 @@ impl GameInstance {
                 "guess wasn't in the dictionary"
             );
 
-            let score = self.rate_guess(guess);
+            let score = self.score_guess(guess);
             if display {
                 println!("{} {}", std::str::from_utf8(&guess).unwrap(), score);
             }
@@ -59,14 +59,12 @@ impl GameInstance {
         DICTIONARY.contains_key(guess)
     }
 
-    pub fn rate_guess(&mut self, guess: Word) -> Target {
-        assert_eq!(guess.len(), WORD_LEN);
-
-        if guess == self.targets[..5] {
+    pub fn score_guess(&mut self, guess: Word) -> Target {
+        if guess == self.targets[..WORD_LEN] {
             self.start = 6;
             return Target::Hit;
         }
-        if guess == self.targets[6..] {
+        if guess == self.targets[WORD_LEN..] {
             self.end = 6;
             return Target::Hit;
         }
@@ -77,12 +75,12 @@ impl GameInstance {
 
         for answer_index in self.start..self.end {
             if guess[answer_index % WORD_LEN] == self.targets[answer_index] {
-                feedback[answer_index % WORD_LEN] = Found;
+                feedback[answer_index % WORD_LEN] = Solved;
                 used[answer_index] = true;
             }
         }
         for letter_index in 0..WORD_LEN {
-            if feedback[letter_index] == Found {
+            if feedback[letter_index] == Solved {
                 continue;
             }
             for answer_index in self.start..self.end {

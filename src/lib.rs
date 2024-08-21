@@ -26,7 +26,7 @@ pub fn play_all_games_with_initial_guess(display: bool) {
     for (&answers, &initial_guess) in TARGET_PAIRS.iter().zip(INITIAL_GUESSES) {
         let mut game = GameInstance::new(answers);
         let mut guesser = Solver::new();
-        let score = game.rate_guess(initial_guess);
+        let score = game.score_guess(initial_guess);
         if display {
             println!("{} {}", std::str::from_utf8(&initial_guess).unwrap(), score);
         }
@@ -39,7 +39,7 @@ pub fn play_all_games_with_initial_guess(display: bool) {
 pub enum Letter {
     Absent,
     Misput,
-    Found,
+    Solved,
 }
 pub type Feedback = [Letter; crate::WORD_LEN];
 
@@ -66,7 +66,7 @@ impl std::fmt::Display for Target {
                     match letter {
                         Letter::Absent => write!(f, "⬛")?,
                         Letter::Misput => write!(f, "🟨")?,
-                        Letter::Found => write!(f, "🟩")?,
+                        Letter::Solved => write!(f, "🟩")?,
                     }
                 }
             }
