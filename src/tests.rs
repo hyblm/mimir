@@ -1,5 +1,5 @@
 use crate::GameInstance;
-use crate::{Letter::*, Target};
+use crate::{Mark::*, Target};
 
 #[test]
 fn test2() {

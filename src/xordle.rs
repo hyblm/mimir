@@ -1,102 +1,138 @@
-pub mod hardcoded_games;
+// use crate::{Clue, Outcome};
 
-use crate::{solver::Solver, Letter, Target, ANSWERS_LEN, WORD_COUNT, WORD_LEN};
-
+pub const WORD_LEN: u8 = 5;
+pub const WORD_COUNT: u8 = 2;
+pub const ANSWERS_LEN: u8 = WORD_COUNT * WORD_LEN;
 pub type Word = [u8; 5];
+pub fn word(slice: &[u8]) -> Word {
+    [slice[0], slice[1], slice[2], slice[3], slice[4]]
+}
 
 // Xordle responses
-// two words remain
-// that's not in the word list
-// you got {answer}, one more to go
-pub struct GameInstance {
-    targets: [u8; ANSWERS_LEN],
-    start: usize,
-    end: usize,
+#[repr(transparent)]
+pub struct Answers<'a> {
+    pub answers: &'a [u8],
 }
 
 /// A collection of all the words accepted by Xordle as valid guesses
-static DICTIONARY: quickphf::PhfMap<&str, usize> = include!(concat!(env!("OUT_DIR"), "/dict.rs"));
+// static DICTIONARY: quickphf::PhfMap<&str, usize> = include!(concat!(env!("OUT_DIR"), "/dict.rs"));
 
-const MAX_ATTEMPTS: u8 = 100;
-
-impl GameInstance {
-    pub fn new(target_strs: [&'static str; WORD_COUNT]) -> Self {
-        let mut targets: [u8; ANSWERS_LEN] = [0; ANSWERS_LEN];
-        for (target_byte, byte) in targets
-            .iter_mut()
-            .zip(target_strs.iter().flat_map(|&str| str.bytes()))
-        {
-            *target_byte = byte;
-        }
-        Self {
-            targets,
-            start: 0,
-            end: ANSWERS_LEN,
-        }
+impl<'a> Answers<'a> {
+    pub fn new(answers: &'a [u8]) -> Self {
+        Self { answers }
+    }
+    pub fn solved(&self) -> bool {
+        self.answers.is_empty()
     }
 
-    pub fn hardcoded(index: usize) -> Self {
-        Self::new(hardcoded_games::get(index))
-    }
-
-    pub fn play(&mut self, guesser: &mut Solver, display: bool) {
-        for _ in 0..MAX_ATTEMPTS {
-            let guess = guesser.make_guess();
-            assert!(
-                self.accepts(&std::str::from_utf8(&guess).unwrap()),
-                "guess wasn't in the dictionary"
-            );
-
-            let score = self.score_guess(guess);
-            if display {
-                println!("{} {}", std::str::from_utf8(&guess).unwrap(), score);
-            }
-            guesser.register_feedback(guess, score.feedback());
+    pub fn compare_guess(&mut self, guess: Word) -> Outcome {
+        let (left, right) = self.answers.split_at(WORD_LEN as usize);
+        if guess == left {
+            self.answers = right;
+            return Outcome(None);
         }
-    }
-
-    pub fn accepts(&self, guess: &str) -> bool {
-        DICTIONARY.contains_key(guess)
-    }
-
-    pub fn score_guess(&mut self, guess: Word) -> Target {
-        if guess == self.targets[..WORD_LEN] {
-            self.start = 6;
-            return Target::Hit;
+        if guess == right {
+            self.answers = left;
+            return Outcome(None);
         }
-        if guess == self.targets[WORD_LEN..] {
-            self.end = 6;
-            return Target::Hit;
-        }
+        // a LUT of how many times a given letter was contained in the answer but not in guess
+        let mut unsolved_letters = [0u8; (b'z' - b'a' + 1) as usize];
+        let mut clues = [Clue::Absent; WORD_LEN as usize];
 
-        use Letter::*;
-        let mut feedback = [Absent; WORD_LEN];
-        let mut used = [false; ANSWERS_LEN];
-
-        for answer_index in self.start..self.end {
-            if guess[answer_index % WORD_LEN] == self.targets[answer_index] {
-                feedback[answer_index % WORD_LEN] = Solved;
-                used[answer_index] = true;
+        for answer in self.answers.chunks_exact(WORD_LEN as usize) {
+            for ((clue, &letter), guessed) in clues.iter_mut().zip(answer).zip(guess) {
+                if guessed == letter {
+                    *clue = Clue::Solved;
+                } else {
+                    unsolved_letters[(letter - b'a') as usize] += 1;
+                }
             }
         }
-        for letter_index in 0..WORD_LEN {
-            if feedback[letter_index] == Solved {
+
+        for (clue, guessed) in clues.iter_mut().zip(guess) {
+            if *clue == Clue::Solved {
                 continue;
             }
-            for answer_index in self.start..self.end {
-                if used[answer_index] {
-                    continue;
-                }
-                if guess[letter_index] == self.targets[answer_index] {
-                    feedback[letter_index] = Misput;
-                    used[answer_index] = true;
-                }
+            if unsolved_letters[(guessed - b'a') as usize] > 0 {
+                *clue = Clue::Misput;
+                unsolved_letters[(guessed - b'a') as usize] -= 1;
             }
         }
-        Target::Miss(feedback)
+        clues.into()
     }
+}
 
-    pub fn print_answers(&self) {
-        println!("[{} {}]", self.targets[0], self.targets[1]);
+// Two words remain
+// that's not in the word list
+// You got {answer}, one more to go.
+// impl std::fmt::Display for Answers<'_> {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         todo!()
+//     }
+// }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum Clue {
+    Solved = 0,
+    Misput = 1,
+    Absent = 2,
+}
+
+#[repr(transparent)]
+pub struct Outcome(Option<Clues>);
+
+#[derive(Debug, Clone, Copy)]
+#[repr(transparent)]
+pub struct Clues([Clue; WORD_LEN as usize]);
+impl Clues {
+    pub fn iter(&self) -> std::slice::Iter<'_, Clue> {
+        self.0.iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Clues {
+    type Item = &'a Clue;
+    type IntoIter = std::slice::Iter<'a, Clue>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl Outcome {
+    pub fn clues(&self) -> Clues {
+        match self {
+            Outcome(None) => Clues([Clue::Absent; WORD_LEN as usize]),
+            Outcome(Some(clues)) => *clues,
+        }
+    }
+}
+
+impl std::fmt::Display for Outcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Outcome(None) => write!(f, "🟩🟩🟩🟩🟩 answer found 🎆")?,
+            Outcome(Some(clues)) => write!(f, "{clues}")?,
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Display for Clues {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for clue in self.0 {
+            match clue {
+                Clue::Absent => write!(f, "⬛")?,
+                Clue::Misput => write!(f, "🟨")?,
+                Clue::Solved => write!(f, "🟩")?,
+            }
+        }
+        Ok(())
+    }
+}
+
+impl From<[Clue; WORD_LEN as usize]> for Outcome {
+    fn from(value: [Clue; WORD_LEN as usize]) -> Self {
+        Self(Some(Clues(value)))
     }
 }
