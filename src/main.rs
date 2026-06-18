@@ -1,84 +1,51 @@
-use mimir::{
-    xordle::{word, Answers, ANSWERS_LEN, WORD_LEN},
-    Solver, DISPLAY, MAX_ATTEMPTS,
-};
+use mimir::xordle;
 
 fn main() {
-    play_all_games_with_first_guess();
-}
-
-const ANSWERS_WITH_FIRST_GUESS: &str = include_str!("../word_lists/answers_with_first_guess.txt");
-
-pub fn play_all_games_with_first_guess() {
     let mut stats = Stats::new();
-    for (round, line) in ANSWERS_WITH_FIRST_GUESS.lines().enumerate() {
-        let (answers, initial_guess) = line.split_at(ANSWERS_LEN as usize);
-        if DISPLAY {
-            print!("{}{}", console::RESET_CURSOR, console::CLEAR);
-            println!(
-                "day {:4} / {}  -  [ {}, {} ]",
-                round + 1,
-                stats.rounds_total,
-                &answers[..WORD_LEN as usize],
-                &answers[WORD_LEN as usize..]
-            );
-        }
-        let mut answers = Answers::new(answers.as_bytes());
-        let guess = word(initial_guess.as_bytes());
-        let outcome = answers.compare_guess(guess);
-        if DISPLAY {
-            print!("{initial_guess} {outcome}");
-        }
-        let mut mimir = mimir::solver();
-        mimir.judge_outcome(guess, outcome, &answers);
-        let score = mimir.play(&mut answers).expect("failed to guess");
-        stats.rounds_solved_in[score as usize] += 1;
+    for i in 0..1_000 {
+        let mut game = xordle::Game::from_archive(i);
+        let mut simple_solver = mimir::Simple::new();
+        let score = game.play_with(&mut simple_solver);
+        stats.bump(score);
+        // println!("{game}");
     }
-    stats.print();
+
+    stats.print_histagram();
 }
 
+#[derive(Default, Debug)]
 struct Stats {
-    rounds_total: usize,
-    // it is impossible to guess the answer in 0 or 1 attempts,
-    // so we'll use those spots for counting games that ended with:
-    // [0] => the solver failing to produce a guess
-    // [1] => the solver running out of attempts
-    rounds_solved_in: [u8; MAX_ATTEMPTS as usize],
+    table: [usize; xordle::MAX_ATTEMPTS],
 }
 
 impl Stats {
-    pub fn new() -> Self {
-        let rounds_total = ANSWERS_WITH_FIRST_GUESS.len() / (ANSWERS_LEN + WORD_LEN + 1) as usize;
-        Self {
-            rounds_total,
-            rounds_solved_in: [0u8; MAX_ATTEMPTS as usize],
-        }
+    fn new() -> Self {
+        Self::default()
     }
 
-    pub fn print(&self) {
-        let failed_games = (self.rounds_solved_in[0] + self.rounds_solved_in[1]) as usize;
-        println!();
-        // println!("Couldn't make guess {} times", self.rounds_solved_in[0]);
-        // println!("Ran out of attempts {} times", self.rounds_solved_in[1]);
-        let mut solved_games = 0;
-        let mut sum = 0f64;
-        for (attempts, count) in self.rounds_solved_in.iter().enumerate().skip(2) {
-            solved_games += usize::from(*count);
-            sum += (attempts * *count as usize) as f64;
-            println!("{attempts:2} {count}");
-            if solved_games + failed_games == self.rounds_total {
-                break;
-            }
-        }
-        println!(
-            "played {solved_games} games with the average Score of {}",
-            // self.rounds_total,
-            sum / solved_games as f64
-        );
+    fn bump(&mut self, idx: usize) {
+        self.table[idx] += 1;
     }
-}
 
-mod console {
-    pub const CLEAR: &str = "\x1B[J";
-    pub const RESET_CURSOR: &str = "\x1B[0;0H";
+    fn print_histagram(&self) {
+        let total: usize = self.table.iter().sum();
+        let max_count = self.table.iter().copied().max().unwrap_or(0);
+
+        println!("Score histogram ({total} games):");
+        for (score, count) in self.table.iter().copied().enumerate() {
+            let label = match score {
+                xordle::RAN_OUT_OF_ATTEMPTS => "ran out".to_string(),
+                xordle::FAILED_TO_GUESS => "failed".to_string(),
+                attempts => format!("{attempts} attempts"),
+            };
+            let bar_len = if max_count == 0 {
+                0
+            } else {
+                count * 50 / max_count
+            };
+            let bar = "█".repeat(bar_len);
+
+            println!("{label:>12} ┃ {count:>5} {bar}");
+        }
+    }
 }

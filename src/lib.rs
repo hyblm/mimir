@@ -1,60 +1,43 @@
-use xordle::{Answers, Clue, Clues, Outcome, Word, WORD_LEN};
+use crate::xordle::{Clue, Mark, WORD_LEN, Word};
 
 pub mod xordle;
 
+pub mod console {
+    #![allow(unused)]
+
+    pub const CLEAR: &str = "\x1B[J";
+    pub const RESET_CURSOR: &str = "\x1B[0;0H";
+    pub const GREEN_BG: &str = "\x1B[102m";
+    pub const RED_BG: &str = "\x1B[101m";
+    pub const BOLD: &str = "\x1B[1m";
+    pub const YELLOW_BG: &str = "\x1B[103m";
+    pub const BLACK_FG: &str = "\x1B[30m";
+    pub const RESET_COLORS: &str = "\x1B[0m";
+}
 // #[cfg(test)]
 // mod tests;
 
-pub const DISPLAY: bool = true;
+pub const DISPLAY: bool = false;
 pub const MAX_ATTEMPTS: u8 = 50;
 
+type Outcome = (bool, Mark);
 pub trait Solver {
     fn make_guess(&mut self) -> Option<Word>;
-    fn judge_outcome(&mut self, guess: Word, outcome: Outcome, answers: &Answers);
-
-    fn play(&mut self, answers: &mut Answers) -> Option<u8> {
-        for attempts in 1..=MAX_ATTEMPTS {
-            let guess = self.make_guess()?;
-            let outcome = answers.compare_guess(guess);
-            if DISPLAY {
-                print!("{} {outcome}", std::str::from_utf8(&guess).unwrap());
-            }
-            self.judge_outcome(guess, outcome, answers);
-            if answers.solved() {
-                return Some(attempts);
-            }
-            //             assert!(
-            //                 self.accepts(&std::str::from_utf8(&guess).unwrap()),
-            //                 "guess wasn't in the dictionary"
-            //             );
-        }
-
-        None
-    }
+    fn judge_outcome(&mut self, guess: Word, outcome: Outcome);
 }
 
-pub fn solver() -> impl Solver {
-    Simple::new()
-}
-
-struct Simple {
+pub struct Simple {
     remaining: Vec<Word>,
 }
 
 impl Simple {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let remaining = include!("../word_lists/words.in").to_vec();
         Self { remaining }
     }
 
-    fn matches(
-        solved: &[u8],
-        mut present: [u8; 26],
-        vocab: Word,
-        guess: Word,
-        clues: Clues,
-    ) -> bool {
-        for ((clue, letter), guess) in clues.iter().zip(vocab).zip(guess) {
+    fn matches(solved: &[u8], mut present: [u8; 26], vocab: Word, guess: Word, mark: Mark) -> bool {
+        for ((clue, letter), guess) in mark.iter().zip(vocab).zip(guess) {
             let solved_index = solved[(letter - b'a') as usize] as usize;
             if solved_index < WORD_LEN as usize && letter != vocab[solved_index] {
                 return false;
@@ -67,7 +50,7 @@ impl Simple {
         }
 
         for letter in vocab {
-            for (&mark, marked) in clues.iter().zip(guess) {
+            for (&mark, marked) in mark.iter().zip(guess) {
                 if mark != Clue::Absent {
                     continue;
                 }
@@ -90,30 +73,19 @@ impl Solver for Simple {
         self.remaining.pop()
     }
 
-    fn judge_outcome(&mut self, guess: Word, outcome: Outcome, answers: &Answers) {
-        if answers.solved() {
-            return;
-        }
-        let (left, right) = answers.answers.split_at(WORD_LEN as usize);
-        let solved = set_solved(guess, outcome.clues());
-        let present = set_present(guess, outcome.clues());
-        self.remaining.retain(|&vocab| {
-            let eliminated = !Self::matches(&solved, present, vocab, guess, outcome.clues());
-            assert!(
-                !(eliminated && (vocab == left || vocab == right)),
-                "\n\neliminated {}",
-                std::str::from_utf8(&vocab).unwrap()
-            );
-            !eliminated
-        });
-        println!(" {} options left", self.remaining.len());
+    fn judge_outcome(&mut self, guess: Word, outcome: Outcome) {
+        let solved = set_solved(guess, outcome.1);
+        let present = set_present(guess, outcome.1);
+        self.remaining
+            .retain(|&x| Self::matches(&solved, present, x, guess, outcome.1));
+        // println!(" {} options left", self.remaining.len());
     }
 }
 
-fn set_solved(guess: [u8; 5], clues: Clues) -> [u8; 26] {
-    let mut solved = [WORD_LEN; (b'z' - b'a' + 1) as usize];
+fn set_solved(guess: [u8; 5], mark: Mark) -> [u8; 26] {
+    let mut solved = [WORD_LEN as u8; (b'z' - b'a' + 1) as usize];
 
-    for (i, (mark, letter)) in clues.iter().zip(guess).enumerate() {
+    for (i, (mark, letter)) in mark.iter().zip(guess).enumerate() {
         if let Clue::Solved = mark {
             solved[(letter - b'a') as usize] = i as u8;
         }
@@ -122,7 +94,7 @@ fn set_solved(guess: [u8; 5], clues: Clues) -> [u8; 26] {
     solved
 }
 
-fn set_present(guess: [u8; 5], clues: Clues) -> [u8; 26] {
+fn set_present(guess: [u8; 5], clues: Mark) -> [u8; 26] {
     let mut present = [0u8; (b'z' - b'a' + 1) as usize];
 
     for (clue, letter) in clues.iter().zip(guess) {
