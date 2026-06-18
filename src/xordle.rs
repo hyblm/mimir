@@ -1,4 +1,5 @@
-use crate::{Outcome, Solver};
+use crate::Solver;
+pub type Outcome = (bool, Mark);
 
 pub const WORD_LEN: usize = 5;
 const WORD_COUNT: usize = 2;

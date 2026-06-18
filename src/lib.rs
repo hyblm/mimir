@@ -1,5 +1,3 @@
-use crate::xordle::{Clue, Mark, WORD_LEN, Word};
-
 pub mod xordle;
 
 pub mod console {
@@ -20,88 +18,55 @@ pub mod console {
 pub const DISPLAY: bool = false;
 pub const MAX_ATTEMPTS: u8 = 50;
 
-type Outcome = (bool, Mark);
-pub trait Solver {
-    fn make_guess(&mut self) -> Option<Word>;
-    fn judge_outcome(&mut self, guess: Word, outcome: Outcome);
+pub use solver::Solver;
+pub mod solver;
+
+#[derive(Default, Debug)]
+pub struct Stats {
+    table: [usize; xordle::MAX_ATTEMPTS],
 }
 
-pub struct Simple {
-    remaining: Vec<Word>,
-}
-
-impl Simple {
+impl Stats {
     pub fn new() -> Self {
-        let remaining = include!("../word_lists/words.in").to_vec();
-        Self { remaining }
+        Self::default()
     }
 
-    fn matches(solved: &[u8], mut present: [u8; 26], vocab: Word, guess: Word, mark: Mark) -> bool {
-        for ((clue, letter), guess) in mark.iter().zip(vocab).zip(guess) {
-            let solved_index = solved[(letter - b'a') as usize] as usize;
-            if solved_index < WORD_LEN as usize && letter != vocab[solved_index] {
-                return false;
-            }
-            if letter == guess {
-                if let Clue::Misput = clue {
-                    return false;
-                }
-            }
-        }
-
-        for letter in vocab {
-            for (&mark, marked) in mark.iter().zip(guess) {
-                if mark != Clue::Absent {
-                    continue;
-                }
-                if letter == marked {
-                    if present[(letter - b'a') as usize] == 0 {
-                        return false;
-                    }
-                    present[(letter - b'a') as usize] -= 1;
-                    break;
-                }
-            }
-        }
-
-        true
-    }
-}
-
-impl Solver for Simple {
-    fn make_guess(&mut self) -> Option<Word> {
-        self.remaining.pop()
+    pub fn bump(&mut self, idx: usize) {
+        self.table[idx] += 1;
     }
 
-    fn judge_outcome(&mut self, guess: Word, outcome: Outcome) {
-        let solved = set_solved(guess, outcome.1);
-        let present = set_present(guess, outcome.1);
-        self.remaining
-            .retain(|&x| Self::matches(&solved, present, x, guess, outcome.1));
-        // println!(" {} options left", self.remaining.len());
-    }
-}
+    pub fn print_histagram(&self) {
+        let total: usize = self.table.iter().sum();
+        let max_count = self.table.iter().copied().max().unwrap_or(0);
 
-fn set_solved(guess: [u8; 5], mark: Mark) -> [u8; 26] {
-    let mut solved = [WORD_LEN as u8; (b'z' - b'a' + 1) as usize];
+        println!("Score histogram ({total} games):");
+        for (score, count) in self.table.iter().copied().enumerate() {
+            let label = match score {
+                xordle::RAN_OUT_OF_ATTEMPTS => "ran out".to_string(),
+                xordle::FAILED_TO_GUESS => "failed".to_string(),
+                attempts => format!("{attempts} attempts"),
+            };
+            let bar = Self::histagram_bar(count, max_count, 50);
 
-    for (i, (mark, letter)) in mark.iter().zip(guess).enumerate() {
-        if let Clue::Solved = mark {
-            solved[(letter - b'a') as usize] = i as u8;
+            println!("{label:>12} ┃ {count:>5} {bar}");
         }
     }
 
-    solved
-}
-
-fn set_present(guess: [u8; 5], clues: Mark) -> [u8; 26] {
-    let mut present = [0u8; (b'z' - b'a' + 1) as usize];
-
-    for (clue, letter) in clues.iter().zip(guess) {
-        if let Clue::Solved | Clue::Misput = clue {
-            present[(letter - b'a') as usize] += 1;
+    fn histagram_bar(count: usize, max_count: usize, width: usize) -> String {
+        if max_count == 0 || count == 0 {
+            return String::new();
         }
-    }
 
-    present
+        let quarter_blocks = count * width * 4 / max_count;
+        let full_blocks = quarter_blocks / 4;
+        let partial_block = match quarter_blocks % 4 {
+            0 => "",
+            1 => "▎",
+            2 => "▌",
+            3 => "▊",
+            _ => unreachable!(),
+        };
+
+        format!("{}{}", "█".repeat(full_blocks), partial_block)
+    }
 }
