@@ -21,7 +21,15 @@ pub static ALL_GAMES: &str = include_str!("../word_lists/answers_with_first_gues
 impl Game {
     pub fn play_with(&mut self, solver: &mut impl Solver) -> usize {
         let mut found_answer_count = 0;
-        for i in 1..=MAX_ATTEMPTS {
+
+        for &(guess, outcome) in &self.history {
+            if outcome.0 {
+                found_answer_count += 1;
+            }
+            solver.judge_outcome(guess, outcome);
+        }
+
+        for i in self.history.len() + 1..=MAX_ATTEMPTS {
             if found_answer_count >= WORD_COUNT {
                 return i;
             }
